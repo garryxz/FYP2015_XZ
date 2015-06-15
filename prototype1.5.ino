@@ -43,11 +43,11 @@ presetIndex_t;
 //Preset profiles can be modified to users liking
 //preset 0 is random?
 
-preset_t preset0[] = {};	//undefined
+preset_t preset0[] = {90.0, 0, 0};	//undefined with dummy temperature
 preset_t preset1[] = {90.0, 2, 3, 90.0, 2, 1, 92.5, 25, 10};	//3 step brew
 preset_t preset2[] = {90.5, 3, 4, 90.0, 3, 1, 90.0, 15, 10, 90.0, 10, 8, 90.0, 6, 6};	// 5 step brew
-preset_t preset3[] = {90.1, 30, 10};	//
-preset_t preset4[] = {92, 30, 10};	//off the shelf 1 step brew
+preset_t preset3[] = {50, 2, 1,50, 2, 2,50, 2, 3,50, 2, 4,50, 2, 5,50, 2, 6,50, 2, 7,50, 2, 8,50, 2, 9,50, 2, 10};	//Test
+preset_t preset4[] = {55.5, 60, 5};	//off the shelf - 1 step brew
 
 //random profiles, not selectable in menu
 preset_t preset5[] = {88.2, 3, 5, 91.0, 1, 2, 92.0, 15, 10, 92.0, 11, 8, 92.5, 10, 7};
@@ -62,22 +62,6 @@ preset_t preset13[] = {91.5, 3, 3, 90.0, 1, 3, 95.0, 15, 10, 93.0, 8, 8, 94.8, 8
 preset_t preset14[] = {90.8, 1, 2, 90.0, 2, 3, 92.0, 15, 10, 94.0, 10, 9, 88.9, 8, 7};
 preset_t preset15[] = {92.7, 0, 2, 90.0, 0, 0, 93.0, 15, 10, 92.0, 10, 7, 90.5, 7, 8};
 
-int steps0 = 1;
-int steps1 = 3;
-int steps2 = 5;
-int steps3 = sizeof(preset3) / 3;
-int steps4 = 1;
-int steps5 = 5;
-int steps6 = 5;
-int steps7 = 5;
-int steps8 = 5;
-int steps9 = 5;
-int steps10 = 5;
-int steps11 = 5;
-int steps12 = 5;
-int steps13 = 5;
-int steps14 = 5;
-int steps15 = 5;
 
 
 //The length of the index is changed with respect to the number of steps for the specific preset profile
@@ -85,52 +69,52 @@ int steps15 = 5;
 presetIndex_t presetIndex[] =
 {
   (preset_t*)&preset0,
-  steps0,
+  0,
 
   (preset_t*)&preset1,
-  steps1,
+  (sizeof(preset1) / sizeof(PRESET)),
 
   (preset_t*)&preset2,
-  steps2,
+  (sizeof(preset2) / sizeof(PRESET)),
 
   (preset_t*)&preset3,
-  steps3,
+  (sizeof(preset3) / sizeof(PRESET)),
 
   (preset_t*)&preset4,
-  steps4,
+  (sizeof(preset4) / sizeof(PRESET)),
 
   (preset_t*)&preset5,
-  steps5,
+  (sizeof(preset5) / sizeof(PRESET)),
 
   (preset_t*)&preset6,
-  steps6,
+  (sizeof(preset6) / sizeof(PRESET)),
 
   (preset_t*)&preset7,
-  steps7,
+  (sizeof(preset7) / sizeof(PRESET)),
 
   (preset_t*)&preset8,
-  steps8,
+  (sizeof(preset8) / sizeof(PRESET)),
 
   (preset_t*)&preset9,
-  steps9,
+  (sizeof(preset9) / sizeof(PRESET)),
 
   (preset_t*)&preset10,
-  steps10,
+  (sizeof(preset10) / sizeof(PRESET)),
 
   (preset_t*)&preset11,
-  steps11,
+  (sizeof(preset11) / sizeof(PRESET)),
 
   (preset_t*)&preset12,
-  steps12,
+  (sizeof(preset12) / sizeof(PRESET)),
 
   (preset_t*)&preset13,
-  steps13,
+  (sizeof(preset13) / sizeof(PRESET)),
 
   (preset_t*)&preset14,
-  steps14,
+  (sizeof(preset14) / sizeof(PRESET)),
 
   (preset_t*)&preset15,
-  steps15,
+  (sizeof(preset15) / sizeof(PRESET)),
 };
 
 //Point to current preset step
@@ -138,13 +122,15 @@ byte activePresetStep = 0;
 byte activePresetIndex = 0; //Select preset profile
 preset_t* activePreset = (preset_t*)presetIndex[0].preset;
 
-//Variables
+//-------------------------Variables---------------------
+
 int tempreadpin = A5; //Temperature reading pin
+int pressurereadpin = A1; //Pressure reading pin
 
 long pidprevtime = 0;
 long pidreadprevtime = 0;
 double pidinterval = 100; //Interval for PID calculation
-double pidreadinterval = 100;
+double pidreadinterval = 50;
 
 long pidprintprevtime = 0;
 double pidprintinterval = 1000;
@@ -153,9 +139,10 @@ int skipcount = 0;
 double setT = 0; //Set temperature
 
 const int numread = 20; //Number of readings before averaging
+
 double tempstring[numread]; //String of readings
 int index = 0;
-int total = 0;
+double total = 0;
 
 double avrvalue = 0;
 double R2 = 100500; //Series resistance value
@@ -166,13 +153,13 @@ double beta = 3950; //Beat coefficient of the thermistor
 double T0 = 298.15; //25 degree in K
 double R1; //Current resistance of the thermistor
 
-int pressurereadpin = A4;
+
 long pressurereadtime = 0;
 long pressurereadprevtime = 0;
-long pressurereadinterval = 50;
+long pressurereadinterval = 10;
 double pressurestring[numread];
 int pindex = 0;
-int ptotal = 0;
+double ptotal = 0;
 double pavrvalue = 0;
 double pressure = 0;
 
@@ -195,7 +182,7 @@ typedef struct PUMP {
         TC4H = 0x0;		//set compare value at 4E(hex) = 78(Dec)
         OCR4D = 0x4E;	//	78/781 ~= 10%
         sei();
-        TCCR4B = (1 << CS43) | (1 << CS41) | (1 << CS40); //Set pre-scaler to 2048 and start timer
+        TCCR4B = (1 << CS43) | (1 << CS42) ; //Set pre-scaler to 2048 and start timer
         break;
 
       case 2: //20% duty
@@ -206,7 +193,7 @@ typedef struct PUMP {
         TC4H = 0x0;
         OCR4D = 0x9C;
         sei();
-        TCCR4B = (1 << CS43) | (1 << CS41) | (1 << CS40); //Set pre-scaler to 2048 and start timer
+        TCCR4B = (1 << CS43) | (1 << CS42) ; //Set pre-scaler to 2048 and start timer
         break;
 
       case 3: //30% duty
@@ -217,7 +204,7 @@ typedef struct PUMP {
         TC4H = 0x0;
         OCR4D = 0xEA;
         sei();
-        TCCR4B = (1 << CS43) | (1 << CS41) | (1 << CS40); //Set pre-scaler to 2048 and start timer
+        TCCR4B = (1 << CS43) | (1 << CS42) ; //Set pre-scaler to 2048 and start timer
         break;
 
       case 4: //40% duty
@@ -228,7 +215,7 @@ typedef struct PUMP {
         TC4H = 0x1;
         OCR4D = 0x38;
         sei();
-        TCCR4B = (1 << CS43) | (1 << CS41) | (1 << CS40); //Set pre-scaler to 2048 and start timer
+        TCCR4B = (1 << CS43) | (1 << CS42) ; //Set pre-scaler to 2048 and start timer
         break;
 
       case 5: //50% duty
@@ -239,7 +226,7 @@ typedef struct PUMP {
         TC4H = 0x1;
         OCR4D = 0x87;
         sei();
-        TCCR4B = (1 << CS43) | (1 << CS41) | (1 << CS40); //Set pre-scaler to 2048 and start timer
+        TCCR4B = (1 << CS43) | (1 << CS42) ; //Set pre-scaler to 2048 and start timer
         break;
 
       case 6: //60% duty
@@ -250,7 +237,7 @@ typedef struct PUMP {
         TC4H = 0x1;
         OCR4D = 0x38;
         sei();
-        TCCR4B = (1 << CS43) | (1 << CS41) | (1 << CS40); //Set pre-scaler to 2048 and start timer
+        TCCR4B = (1 << CS43) | (1 << CS42) ; //Set pre-scaler to 2048 and start timer
         break;
 
       case 7:
@@ -261,7 +248,7 @@ typedef struct PUMP {
         TC4H = 0x0;
         OCR4D = 0xEA;
         sei();
-        TCCR4B = (1 << CS43) | (1 << CS41) | (1 << CS40); //Set pre-scaler to 2048 and start timer
+        TCCR4B = (1 << CS43) | (1 << CS42) ; //Set pre-scaler to 2048 and start timer
         break;
 
       case 8: //80% duty
@@ -272,7 +259,7 @@ typedef struct PUMP {
         TC4H = 0x0;
         OCR4D = 0x9C;
         sei();
-        TCCR4B = (1 << CS43) | (1 << CS41) | (1 << CS40); //Set pre-scaler to 2048 and start timer
+        TCCR4B = (1 << CS43) | (1 << CS42) ; //Set pre-scaler to 2048 and start timer
         break;
 
       case 9: //90% duty
@@ -283,7 +270,7 @@ typedef struct PUMP {
         TC4H = 0x0;
         OCR4D = 0x4E;
         sei();
-        TCCR4B = (1 << CS43) | (1 << CS41) | (1 << CS40); //Set pre-scaler to 2048 and start timer
+        TCCR4B = (1 << CS43) | (1 << CS42) ; //Set pre-scaler to 2048 and start timer
         break;
 
       case 10: //100% duty
@@ -294,7 +281,7 @@ typedef struct PUMP {
         TC4H = 0x3;
         OCR4D = 0x0D;
         sei();
-        TCCR4B = (1 << CS43) | (1 << CS41) | (1 << CS40); //Set pre-scaler to 2048 and start timer
+        TCCR4B = (1 << CS43) | (1 << CS42) ; //Set pre-scaler to 2048 and start timer
         break;
 
       default: //0% duty - OFF
@@ -305,7 +292,7 @@ typedef struct PUMP {
         TC4H = 0x0;
         OCR4D = 0x0;
         sei();
-        TCCR4B = (1 << CS43) | (1 << CS41) | (1 << CS40); //Set pre-scaler to 2048 and start timer
+        TCCR4B = (1 << CS43) | (1 << CS42) ; //Set pre-scaler to 2048 and start timer
         break;
     }
   }
@@ -340,7 +327,7 @@ long lasttime = 0;
 long transitiontime = 15; //auto return to standby mode
 
 int brewcyclecount = 0;
-
+int checkwater = 12;
 
 //---------------------------Setup-----------------------------------------
 
@@ -395,6 +382,7 @@ void loop() {
       lcd.setBacklight(OFF);
       lcd.noDisplay();
       PIDreset();
+      skipcount = 0;
 
       if (buttons) {
         lcd.clear();
@@ -445,8 +433,10 @@ void loop() {
         lcd.clear();
         if (activePresetIndex > 0 && activePresetIndex < 5) {
 
-          if (brewcyclecount > 15) {
+          if (brewcyclecount > checkwater) {
             mode = 4;
+            lcd.clear();
+            lcd.setBacklight(TEAL);
           }
           else {
             mode = 3;
@@ -455,8 +445,10 @@ void loop() {
         }
 
         else if (activePresetIndex == 0) {
-          if (brewcyclecount > 15) {
+          if (brewcyclecount > checkwater) {
             mode = 4;
+            lcd.clear();
+            lcd.setBacklight(TEAL);
           }
           else {
             activePresetIndex = random(0, 16);
@@ -485,6 +477,7 @@ void loop() {
       //auto sleep
       if (buttons) {
         lasttime = timeloop;
+        lcd.setBacklight(WHITE);
       }
       else if ((timeloop - lasttime) / 1000 >= sleeptime) {
         lcd.setBacklight(VIOLET);
@@ -528,15 +521,17 @@ void loop() {
         lcd.setBacklight(RED);
         lcd.setCursor(0, 0);
         lcd.print("Brewing...");
-        lcd.setCursor(11, 0);
+        lcd.setCursor(10, 0);
+        lcd.print("P");
         lcd.print(activePresetIndex);
-        lcd.setCursor(15, 0);
+        lcd.setCursor(14, 0);
+        lcd.print("S");
         lcd.print(activePresetStep);
 
         unsigned long elapsedtime = millis() - time;
         lcd.setCursor(0, 1);
         lcd.print((elapsedtime / 1000));
-        lcd.print("s ");
+        lcd.print("s  ");
 
         lcd.setCursor(4, 1);
         lcd.print(abs(pressure), 1);
@@ -590,37 +585,56 @@ void loop() {
               lasttime = timeloop;
             }
           }
-        }
-
-
+          if(buttons & BUTTON_RIGHT){
+            
+            if (presetIndex[activePresetIndex].length > activePresetStep) {
+              activePreset++;
+              activePresetStep++;
+              time = millis();
+              elapsedtime = 0;
+            }
+            else {
+              lcd.clear();
+              lcd.setBacklight(GREEN);
+              lcd.setCursor(5, 0);
+              lcd.print("Enjoy!");
+              /*lcd.setCursor(0,1);
+              lcd.print("Time taken: ");
+              lcd.print(totaltime);
+              lcd.print("s");*/
+              mode = 5;
+              lasttime = timeloop;
+            }
+           }//manaul skip end
+          
+        }//else end
 
       }
       break;
 
     case 4: //Check Water transition
-      lcd.clear();
-      lcd.setBacklight(TEAL);
+
       lcd.setCursor(0,0);
-      lcd.print("Please Check Water");
+      lcd.print("Check Water");
       lcd.setCursor(0,1);
-      lcd.print("Press Sel to cancel");
+      lcd.print("Press Sel to CNL");
 
       if (buttons & BUTTON_SELECT) {
         lcd.clear();
+        lcd.setBacklight(WHITE);
         mode = 1;
-        brecyclecount = 0;
+        brewcyclecount = 0;
       }
       else if(buttons){ 
         lcd.clear();
-        brewcyclecount++;
+        lcd.setBacklight(RED);
+        brewcyclecount = 0;
         mode = 3;
       }
       
       break;
 
-    case 5: //Transition
-
-
+    case 5: //Post brew Transition
 
       if (buttons & BUTTON_UP) {
 
@@ -639,7 +653,7 @@ void loop() {
         if (buttons) {
           lasttime = timeloop;
         }
-        else if ((timeloop - lasttime) / 1000 >= sleeptime + 15) {
+        else if ((timeloop - lasttime) / 1000 >= sleeptime + 20) {
           mode = 0;
         }
       }
@@ -655,6 +669,7 @@ void loop() {
   if (mode == 3) {
     activepump->duty(activePreset->duty);
   }
+  
   //Turn pump off when not in use
   else {
     activepump->duty(0);
@@ -662,11 +677,10 @@ void loop() {
 
   //------------------------------------------------------
   //pressure reading and calculation
-  if (mode > 0 && mode < 5) {
+   if (mode >= 1) {
 
-    unsigned long ptime = millis();
 
-    if (ptime - pressurereadprevtime > pressurereadinterval) {
+    if ((float)millis() - pressurereadprevtime > pressurereadinterval) {
 
       ptotal = ptotal - pressurestring[pindex];
 
@@ -674,7 +688,7 @@ void loop() {
 
       ptotal = ptotal + pressurestring[index];
 
-      pindex++;
+      pindex = pindex + 1;
 
       if (pindex >= numread) {
         pindex = 0;
@@ -682,19 +696,21 @@ void loop() {
 
       pavrvalue = ptotal / numread;
 
-      pressure = (300 * (pavrvalue - 105)) / (918 * 14.50377); //calculate psi convert to Bar
+      pressure = (300 * (pavrvalue - 105)) / (918 * 14.50377); //calculate psi and convert to Bar
 
-      pressurereadprevtime = ptime;
+      pressurereadprevtime = millis();
     }
 
   }
+  
+  
 
 
 
 
   //--------------------------------------------------------------
   //Temperature reading and PID calculation
-  if (mode > 0 && mode < 5) {
+  if (mode >= 1) {
 
     setT = activePreset->temperature;
     unsigned long pidtime = millis();
@@ -728,41 +744,47 @@ void loop() {
 
     }
 
-    if (skipcount > 4) { //skip first 3 seconds for readings before controlling heater to avoid massive overshoot
+    if (skipcount > 2) { //skip first 2 readings before start to control heater to avoid overshoot
 
-      if (activePreset->temperature - temp > 30) {
-        OCR1A = 0x1E85;
+      if (setT - temp > 45) {  //force 100% while temperature difference is larger than 45, 
+                                                     //reducing this value would cause overshoot 
+        OCR1A = 0x1E85;  
       }
 
-      else if ((activePreset->temperature - temp > 8 && activePresetStep > 2)) {
-        OCR1A = 0xF43;
+      else if ((setT - temp > 8 && activePresetStep > 1)) {
+        OCR1A = 0xF43;  //force to 50% if temperature drops 8 degrees while brewing
       }
 
       else if (pidtime - pidprevtime > pidinterval) {
-
-
+        
         PIDcompute(temp, setT); //pid calculation on current temp and set temp
 
         OCR1A = output;
 
         pidprevtime = pidtime;
       }
+      
     }
   }
 
-  else setT = 0;
-
-  //serial debug
+  else {
+    setT = 0;
+    OCR1A = 0;
+  }
+  
+    //serial debug
   if (timeloop - pidprintprevtime > pidprintinterval) {
 
     Serial.print("Temp: ");
     Serial.println(temp, 1);
-    Serial.print("Duty: ");
-    Serial.println((OCR1A / 0x1E85) * 100);
-    Serial.print("Pump: ");
+    Serial.print("Heater Duty: ");
+    Serial.println(OCR1A/0x1E85);
+    Serial.print("Pump Duty: ");
     Serial.println(activePreset->duty);
+    Serial.print("Pressure read: ");
+    Serial.println(pavrvalue);
     Serial.print("Pressure: ");
-    Serial.println(pressure, 1);
+    Serial.println(pressure,2);
     Serial.println("-------------------------");
     pidprintprevtime = timeloop;
   }
